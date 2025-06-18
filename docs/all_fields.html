@@ -41,10 +41,13 @@
     <script>
         let currentHeading = 0;
         let currentTargetIndex = 0;
-        const targets = [
-            { lat: 60.4481, lon: 22.2601 }, // Example coordinates 
-            { lat: 60.8000, lon: 22.3000 }, // Example coordinates 
-            { lat: 60.2, lon: 23.0 }   // Example coordinates 
+        const targets = [// Example coordinates that would be the input from file/server
+            { lat: 60.448197, lon: 22.259914 }, 
+            { lat: 60.448109, lon: 22.259617 }, 
+            { lat: 60.447870, lon: 22.259947 },   
+            { lat: 60.447974, lon:22.260262 },
+            { lat: 60.447938, lon: 22.259922},
+            {lat: 60.448126, lon: 22.259892}
         ];
 
         function updateArrowRotation(bearing) {
