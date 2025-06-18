@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,24 +18,28 @@
       transform-origin: center center;
       transition: transform 0.2s ease-out;
     }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
   <h1>Compass Arrow</h1>
   <div id="arrow"></div>
   <p id="info">Waiting for orientation...</p>
+  <button onclick="startCompass()">Start Compass</button>
 
   <script>
     let currentHeading = 0;
 
-    // Update arrow rotation
     function updateArrowRotation(bearing) {
       const arrow = document.getElementById('arrow');
       arrow.style.transform = `rotate(${bearing}deg)`;
       document.getElementById('info').textContent = `Bearing: ${bearing.toFixed(2)}°`;
     }
 
-    // Listen for compass heading
     function handleOrientation(event) {
       let heading = event.alpha;
 
@@ -50,23 +53,29 @@
       }
     }
 
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ requires permission
-      DeviceOrientationEvent.requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation, true);
-          } else {
-            document.getElementById('info').textContent = 'Permission denied for orientation.';
-          }
-        })
-        .catch(console.error);
-    } else {
-      // Non-iOS or older versions
-      window.addEventListener('deviceorientation', handleOrientation, true);
+    function startCompass() {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation, true);
+              document.getElementById('info').textContent = 'Compass started.';
+            } else {
+              document.getElementById('info').textContent = 'Permission denied.';
+            }
+          })
+          .catch(error => {
+            document.getElementById('info').textContent = 'Error: ' + error;
+          });
+      } else {
+        // Non-iOS
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        document.getElementById('info').textContent = 'Compass started.';
+      }
     }
 
-    // Request location access
+    // Optional: GPS
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(
         (position) => {
@@ -77,8 +86,6 @@
         },
         { enableHighAccuracy: true }
       );
-    } else {
-      alert("Geolocation is not supported by your browser.");
     }
   </script>
 </body>
