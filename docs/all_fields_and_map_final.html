@@ -109,7 +109,7 @@
                         const userLon = position.coords.longitude;
                         document.getElementById('user-coordinates').textContent = `Your Coordinates: ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
                         const distance = haversineDistance(userLat, userLon, target.lat, target.lon);
-                        document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
+                        document.getElementById('distance').textContent = `Distance: ${(distance * 1000).toFixed(1)} m`;
                         const bearing = calculateBearing(userLat, userLon, target.lat, target.lon);
                         updateArrowRotation(bearing);
                         if (!map) {
@@ -163,7 +163,7 @@
                 ],
                 view: new ol.View({
                     center: userCoords,
-                    zoom: 10
+                    zoom: 17
                 })
             });
 
