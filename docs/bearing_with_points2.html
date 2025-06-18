@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GPS Compass Arrow</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: sans-serif;
+            margin-top: 50px;
+        }
+
+        #arrow {
+            width: 100px;
+            height: 100px;
+            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjAgMjAiPjxwb2x5Z29uIHBvaW50cz0iMTAgMCAxMCAyMCAxMCAxMCAwIDEwIDEwIDAgMjAgMTAgMCAxMCIgc3R5bGU9ImZpbGw6cmVkOyIvPjwvc3ZnPg==') no-repeat center;
+            background-size: contain;
+            margin: 0 auto;
+            transform-origin: center center;
+            transition: transform 0.2s ease-out;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Compass Arrow</h1>
+    <div id="arrow"></div>
+    <p id="info">Waiting for orientation...</p>
+    <button onclick="nextCoordinate()">Next Coordinate</button>
+
+    <script>
+        let currentHeading = 0;
+        let currentIndex = 0;
+        const coordinates = [
+            { lat: 37.7749, lon: -122.4194 }, // Example coordinates
+            { lat: 34.0522, lon: -118.2437 },
+            { lat: 40.7128, lon: -74.0060 }
+        ];
+
+        function updateArrowRotation(bearing) {
+            const arrow = document.getElementById('arrow');
+            arrow.style.transform = `rotate(${-bearing}deg)`; // Invert to always point north
+            document.getElementById('info').textContent = `Heading: ${bearing.toFixed(2)}°`;
+        }
+
+        function handleOrientation(event) {
+            let heading = event.alpha;
+
+            if (typeof event.webkitCompassHeading !== "undefined") {
+                heading = event.webkitCompassHeading; // iOS
+            }
+
+            if (heading !== null) {
+                currentHeading = heading;
+                updateArrowRotation(heading);
+            }
+        }
+
+        function startCompass() {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                            document.getElementById('info').textContent = 'Compass started.';
+                        } else {
+                            document.getElementById('info').textContent = 'Permission denied.';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('info').textContent = 'Error: ' + error;
+                    });
+            } else {
+                // Non-iOS
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                document.getElementById('info').textContent = 'Compass started.';
+            }
+        }
+
+        function nextCoordinate() {
+            currentIndex = (currentIndex + 1) % coordinates.length;
+            const nextCoord = coordinates[currentIndex];
+            document.getElementById('info').textContent = `Next Coordinate: ${nextCoord.lat}, ${nextCoord.lon}`;
+            // Calculate bearing to next coordinate
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const lat1 = position.coords.latitude;
+                    const lon1 = position.coords.longitude;
+                    const lat2 = nextCoord.lat;
+                    const lon2 = nextCoord.lon;
+                    const bearing = calculateBearing(lat1, lon1, lat2, lon2);
+                    updateArrowRotation(bearing);
+                });
+            }
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRadians = (deg) => deg * (Math.PI / 180);
+            const toDegrees = (rad) => rad * (180 / Math.PI);
+
+            const dLon = toRadians(lon2 - lon1);
+            const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+            const x = Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+                Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+            const brng = toDegrees(Math.atan2(y, x));
+            return (brng + 360) % 360;
+        }
+
+        // Optional: GPS
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    console.log("GPS Position:", position.coords.latitude, position.coords.longitude);
+                },
+                (error) => {
+                    console.error("Geolocation error:", error.message);
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+    </script>
+</body>
+
+</html>
