@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GPS Compass Arrow</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: sans-serif;
+            margin-top: 50px;
+        }
+
+        #arrow {
+            width: 100px;
+            height: 100px;
+            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGQ9Ik0xMiAyTDEgMTloMTEuMXYtM2g0djNoMTFMMTIgMnoiIGZpbGw9IiNmZjAwMDAiLz48L3N2Zz4=') no-repeat center;
+            background-size: contain;
+            margin: 0 auto;
+            transform-origin: center center;
+            transition: transform 0.2s ease-out;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+</head>
+
+<body>
+    <h1>Compass Arrow</h1>
+    <div id="arrow"></div>
+    <p id="info">Waiting for orientation...</p>
+    <p id="user-coordinates">Your Coordinates: N/A</p>
+    <p id="target-coordinates">Target Coordinates: N/A</p>
+    <p id="distance">Distance: N/A</p>
+    <button onclick="nextTarget()">Next Target</button>
+    <div id="map" style="width: 100%; height: 400px; margin-top: 20px;"></div>
+
+    <script>
+        let currentHeading = 0;
+        let currentTargetIndex = 0;
+        const targets = [// Example coordinates that would be the input from file/server
+            { lat: 60.448197, lon: 22.259914 },
+            { lat: 60.448109, lon: 22.259617 },
+            { lat: 60.447870, lon: 22.259947 },
+            { lat: 60.447974, lon: 22.260262 },
+            { lat: 60.447938, lon: 22.259922 },
+            { lat: 60.448126, lon: 22.259892 }
+        ];
+
+
+        function updateArrowRotation(bearing) {
+            const arrow = document.getElementById('arrow');
+            arrow.style.transform = `rotate(${-bearing}deg)`; // Invert to always point north
+            document.getElementById('info').textContent = `Heading: ${bearing.toFixed(2)}°`;
+        }
+
+        function handleOrientation(event) {
+            let heading = event.alpha;
+
+            if (typeof event.webkitCompassHeading !== "undefined") {
+                heading = event.webkitCompassHeading; // iOS
+            }
+
+            if (heading !== null) {
+                currentHeading = heading;
+                updateArrowRotation(heading);
+            }
+        }
+
+        function startCompass() {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                            document.getElementById('info').textContent = 'Compass started.';
+                        } else {
+                            document.getElementById('info').textContent = 'Permission denied.';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('info').textContent = 'Error: ' + error;
+                    });
+            } else {
+                // Non-iOS
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                document.getElementById('info').textContent = 'Compass started.';
+            }
+        }
+
+        function nextTarget() {
+            currentTargetIndex = (currentTargetIndex + 1) % targets.length;
+            updateTargetInfo();
+        }
+
+        let map, userMarker, targetMarker;
+
+        function initMap(lat, lon) {
+            const userCoords = ol.proj.fromLonLat([lon, lat]);
+
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.XYZ({
+                            url: 'https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png'
+                        })
+                    })
+                ],
+                view: new ol.View({
+                    center: userCoords,
+                    zoom: 17
+                })
+            });
+
+            userMarker = new ol.Feature({
+                geometry: new ol.geom.Point(userCoords),
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 6,
+                        fill: new ol.style.Fill({ color: 'blue' }),
+                        stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                    })
+                })
+            });
+
+            targetMarker = new ol.Feature({
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 6,
+                        fill: new ol.style.Fill({ color: 'red' }),
+                        stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                    })
+                })
+            });
+
+            const vectorSource = new ol.source.Vector({
+                features: [userMarker, targetMarker]
+            });
+
+            const vectorLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: function (feature) {
+                    const color = feature === userMarker ? 'blue' : 'red';
+                    return new ol.style.Style({
+                        image: new ol.style.Circle({
+                            radius: 6,
+                            fill: new ol.style.Fill({ color: color }),
+                            stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                        })
+                    });
+                }
+            });
+            map.addLayer(vectorLayer);
+        }
+
+        function updateMap(userLat, userLon, targetLat, targetLon) {
+            const userCoords = ol.proj.fromLonLat([userLon, userLat]);
+            const targetCoords = ol.proj.fromLonLat([targetLon, targetLat]);
+
+            userMarker.setGeometry(new ol.geom.Point(userCoords));
+            targetMarker.setGeometry(new ol.geom.Point(targetCoords));
+
+            map.getView().setCenter(userCoords);
+        }
+
+        function updateTargetInfo() {
+            const target = targets[currentTargetIndex];
+            document.getElementById('target-coordinates').textContent = `Target Coordinates: ${target.lat.toFixed(4)}, ${target.lon.toFixed(4)}`;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        document.getElementById('user-coordinates').textContent = `Your Coordinates: ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
+                        const distance = haversineDistance(userLat, userLon, target.lat, target.lon);
+                        document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
+                        const bearing = calculateBearing(userLat, userLon, target.lat, target.lon);
+                        updateArrowRotation(bearing);
+
+                        if (!map) {
+                            initMap(userLat, userLon);
+                        }
+                        updateMap(userLat, userLon, target.lat, target.lon);
+                    },
+                    (error) => {
+                        console.error("Geolocation error:", error.message);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dlat = (lat2 - lat1) * Math.PI / 180;
+            const dlon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dlat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dlon / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const dlon = (lon2 - lon1) * Math.PI / 180;
+            lat1 = lat1 * Math.PI / 180;
+            lat2 = lat2 * Math.PI / 180;
+            const x = Math.sin(dlon) * Math.cos(lat2);
+            const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dlon);
+            let bearing = Math.atan2(x, y) * 180 / Math.PI;
+            bearing = (bearing + 360) % 360;
+            return bearing;
+        }
+
+        startCompass();
+        updateTargetInfo();
+    </script>
+</body>
+
+</html>
