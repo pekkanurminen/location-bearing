@@ -1,83 +1,85 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>GPS Compass Arrow</title>
-    <style>
-        body {
-            text-align: center;
-            font-family: sans-serif;
-            margin-top: 50px;
-        }
-
-        #arrow {
-            width: 100px;
-            height: 100px;
-            background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Red_Arrow_Up.svg/1200px-Red_Arrow_Up.svg.png') no-repeat center;
-            background-size: contain;
-            margin: 0 auto;
-            transform-origin: center center;
-            transition: transform 0.2s ease-out;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>GPS Compass Arrow</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      margin-top: 50px;
+    }
+    #arrow {
+      width: 100px;
+      height: 100px;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Red_Arrow_Up.svg/1200px-Red_Arrow_Up.svg.png') no-repeat center;
+      background-size: contain;
+      margin: 0 auto;
+      transform-origin: center center;
+      transition: transform 0.2s ease-out;
+    }
+  </style>
 </head>
-
 <body>
-    <h1>Compass Arrow</h1>
-    <div id="arrow"></div>
-    <p id="info">Waiting for orientation...</p>
+  <h1>Compass Arrow</h1>
+  <div id="arrow"></div>
+  <p id="info">Waiting for orientation...</p>
 
-    <script>
-        let currentHeading = 0;
+  <script>
+    let currentHeading = 0;
 
-        // Update arrow rotation
-        function updateArrowRotation(bearing) {
-            const arrow = document.getElementById('arrow');
-            arrow.style.transform = `rotate(${bearing}deg)`;
-            document.getElementById('info').textContent = `Bearing: ${bearing.toFixed(2)}°`;
-        }
+    // Update arrow rotation
+    function updateArrowRotation(bearing) {
+      const arrow = document.getElementById('arrow');
+      arrow.style.transform = `rotate(${bearing}deg)`;
+      document.getElementById('info').textContent = `Bearing: ${bearing.toFixed(2)}°`;
+    }
 
-        // Listen for compass heading
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-        window.addEventListener('deviceorientation', handleOrientation, true);
+    // Listen for compass heading
+    function handleOrientation(event) {
+      let heading = event.alpha;
 
+      if (typeof event.webkitCompassHeading !== "undefined") {
+        heading = event.webkitCompassHeading; // iOS
+      }
 
+      if (heading !== null) {
+        currentHeading = heading;
+        updateArrowRotation(heading);
+      }
+    }
 
-        function handleOrientation(event) {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ requires permission
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation, true);
-                        } else {
-                            document.getElementById('info').textContent = 'Permission denied for orientation.';
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Non-iOS or older versions
-                window.addEventListener('deviceorientation', handleOrientation, true);
-            }
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      // iOS 13+ requires permission
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+          } else {
+            document.getElementById('info').textContent = 'Permission denied for orientation.';
+          }
+        })
+        .catch(console.error);
+    } else {
+      // Non-iOS or older versions
+      window.addEventListener('deviceorientation', handleOrientation, true);
+    }
 
-        }
-
-        // Request location access
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    console.log("GPS Position:", position.coords.latitude, position.coords.longitude);
-                },
-                (error) => {
-                    console.error("Geolocation error:", error.message);
-                },
-                { enableHighAccuracy: true }
-            );
-        } else {
-            alert("Geolocation is not supported by your browser.");
-        }
-    </script>
+    // Request location access
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          console.log("GPS Position:", position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error("Geolocation error:", error.message);
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  </script>
 </body>
-
 </html>
