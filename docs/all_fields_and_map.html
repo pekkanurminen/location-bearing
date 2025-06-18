@@ -1,67 +1,54 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>GPS Compass with OpenLayers Map</title>
+    <title>GPS Compass Arrow</title>
     <style>
         body {
             text-align: center;
             font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        #map {
-            width: 100%;
-            height: 100vh;
+            margin-top: 50px;
         }
 
         #arrow {
             width: 100px;
             height: 100px;
-            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cGF0aCBkPSJNNTAgMCAxMDAgMTAwIDUwIDc1IDAgMTAweiIgZmlsbD0icmVkIi8+Cjwvc3ZnPgo=') no-repeat center;
+            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGQ9Ik0xMiAyTDEgMTloMTEuMXYtM2g0djNoMTFMMTIgMnoiIGZpbGw9IiNmZjAwMDAiLz48L3N2Zz4=') no-repeat center;
             background-size: contain;
-            position: absolute;
-            top: 50%;
-            left: 50%;
+            margin: 0 auto;
             transform-origin: center center;
             transition: transform 0.2s ease-out;
         }
 
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-        }
-
         button {
-            margin-top: 10px;
+            margin-top: 20px;
             padding: 10px 20px;
             font-size: 16px;
         }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
 
+        #map {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@latest/ol.js"></script>
 </head>
 
 <body>
-    <div id="map"></div>
+    <h1>Compass Arrow</h1>
     <div id="arrow"></div>
-    <div id="info">
-        <p id="target-coords">Target: N/A</p>
-        <p id="user-coords">Your Location: N/A</p>
-        <p id="distance">Distance: N/A</p>
-        <p id="bearing">Bearing: N/A</p>
-        <button onclick="nextTarget()">Next Target</button>
-    </div>
+    <p id="info">Waiting for orientation...</p>
+    <p id="user-coordinates">Your Coordinates: N/A</p>
+    <p id="target-coordinates">Target Coordinates: N/A</p>
+    <p id="distance">Distance: N/A</p>
+    <button onclick="nextTarget()">Next Target</button>
+    <div id="map"></div>
 
     <script>
-        let map, userMarker, targetMarker, vectorLayer;
         let currentHeading = 0;
         let currentTargetIndex = 0;
         const targets = [
@@ -70,41 +57,12 @@
             { lat: 40.7128, lon: -74.0060 }   // Example coordinates (New York)
         ];
 
-        function initMap() {
-            map = new ol.Map({
-                target: 'map',
-                layers: [
-                    new ol.layer.Tile({
-                        source: new ol.source.XYZ({
-                            url: 'https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png'
-                        })
-                    })
-                ],
-                view: new ol.View({
-                    center: ol.proj.fromLonLat([targets[0].lon, targets[0].lat]),
-                    zoom: 4
-                })
-            });
-
-            vectorLayer = new ol.layer.Vector({
-                source: new ol.source.Vector()
-            });
-            map.addLayer(vectorLayer);
-
-            userMarker = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([0, 0]))
-            });
-            targetMarker = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([targets[0].lon, targets[0].lat]))
-            });
-
-            vectorLayer.getSource().addFeatures([userMarker, targetMarker]);
-        }
+        let map, userMarker, targetMarker;
 
         function updateArrowRotation(bearing) {
             const arrow = document.getElementById('arrow');
-            arrow.style.transform = `rotate(${-bearing}deg)`;
-            document.getElementById('bearing').textContent = `Bearing: ${bearing.toFixed(2)}°`;
+            arrow.style.transform = `rotate(${-bearing}deg)`; // Invert to always point north
+            document.getElementById('info').textContent = `Heading: ${bearing.toFixed(2)}°`;
         }
 
         function handleOrientation(event) {
@@ -144,55 +102,112 @@
 
         function nextTarget() {
             currentTargetIndex = (currentTargetIndex + 1) % targets.length;
-            const target = targets[currentTargetIndex];
-            targetMarker.setGeometry(new ol.geom.Point(ol.proj.fromLonLat([target.lon, target.lat])));
-            document.getElementById('target-coords').textContent = `Target: ${target.lat.toFixed(4)}, ${target.lon.toFixed(4)}`;
-            updateDistanceAndBearing();
+            updateTargetInfo();
         }
 
-        function updateDistanceAndBearing() {
+        function updateTargetInfo() {
+            const target = targets[currentTargetIndex];
+            document.getElementById('target-coordinates').textContent = `Target Coordinates: ${target.lat.toFixed(4)}, ${target.lon.toFixed(4)}`;
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    const userLat = position.coords.latitude;
-                    const userLon = position.coords.longitude;
-                    const target = targets[currentTargetIndex];
-                    const distance = calculateDistance(userLat, userLon, target.lat, target.lon);
-                    const bearing = calculateBearing(userLat, userLon, target.lat, target.lon);
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        document.getElementById('user-coordinates').textContent = `Your Coordinates: ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
+                        const distance = haversineDistance(userLat, userLon, target.lat, target.lon);
+                        document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
+                        const bearing = calculateBearing(userLat, userLon, target.lat, target.lon);
+                        updateArrowRotation(bearing);
 
-                    userMarker.setGeometry(new ol.geom.Point(ol.proj.fromLonLat([userLon, userLat])));
-                    document.getElementById('user-coords').textContent = `Your Location: ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
-                    document.getElementById('distance').textContent = `Distance: ${distance.toFixed(2)} km`;
-                    updateArrowRotation(bearing - currentHeading);
-                });
+                        if (!map) {
+                            initMap(userLat, userLon);
+                        }
+                        updateMap(userLat, userLon, target.lat, target.lon);
+                    },
+                    (error) => {
+                        console.error("Geolocation error:", error.message);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                alert("Geolocation is not supported by your browser.");
             }
         }
 
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of the Earth in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dlat = (lat2 - lat1) * Math.PI / 180;
+            const dlon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dlat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dlon / 2) ** 2;
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
         }
 
         function calculateBearing(lat1, lon1, lat2, lon2) {
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
-            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
-                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
-            const bearing = Math.atan2(y, x) * 180 / Math.PI;
-            return (bearing + 360) % 360;
+            const dlon = (lon2 - lon1) * Math.PI / 180;
+            lat1 = lat1 * Math.PI / 180;
+            lat2 = lat2 * Math.PI / 180;
+            const x = Math.sin(dlon) * Math.cos(lat2);
+            const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dlon);
+            let bearing = Math.atan2(x, y) * 180 / Math.PI;
+            bearing = (bearing + 360) % 360;
+            return bearing;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initMap();
-            startCompass();
-            nextTarget();
-            setInterval(updateDistanceAndBearing, 5000); // Update every 5 seconds
-        });
+        function initMap(lat, lon) {
+            const userCoords = ol.proj.fromLonLat([lon, lat]);
+
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.XYZ({
+                            url: 'https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png'
+                        })
+                    })
+                ],
+                view: new ol.View({
+                    center: userCoords,
+                    zoom: 10
+                })
+            });
+
+            userMarker = new ol.Feature({
+                geometry: new ol.geom.Point(userCoords)
+            });
+
+            targetMarker = new ol.Feature();
+
+            const vectorSource = new ol.source.Vector({
+                features: [userMarker, targetMarker]
+            });
+
+            const vectorLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 6,
+                        fill: new ol.style.Fill({ color: 'red' }),
+                        stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                    })
+                })
+            });
+
+            map.addLayer(vectorLayer);
+        }
+
+        function updateMap(userLat, userLon, targetLat, targetLon) {
+            const userCoords = ol.proj.fromLonLat([userLon, userLat]);
+            const targetCoords = ol.proj.fromLonLat([targetLon, targetLat]);
+
+            userMarker.setGeometry(new ol.geom.Point(userCoords));
+            targetMarker.setGeometry(new ol.geom.Point(targetCoords));
+
+            map.getView().setCenter(userCoords);
+        }
+
+        startCompass();
+        updateTargetInfo();
     </script>
 </body>
 
